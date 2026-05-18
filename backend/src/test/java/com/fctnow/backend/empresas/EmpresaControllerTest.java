@@ -108,12 +108,6 @@ class EmpresaControllerTest {
   }
 
   @Test
-  void listRequiresAuthentication() throws Exception {
-    mockMvc.perform(get("/api/empresas"))
-        .andExpect(status().isUnauthorized());
-  }
-
-  @Test
   void mineRequiresAuthentication() throws Exception {
     mockMvc.perform(get("/api/empresas/me"))
         .andExpect(status().isUnauthorized());
@@ -240,168 +234,35 @@ class EmpresaControllerTest {
   }
 
   @Test
-  void listReturnsCompanies() throws Exception {
-    empresaRepository.save(company(
-        "Zeta Formacion",
-        "B11111111",
-        EmpresaEstado.ACTIVA));
-    empresaRepository.save(company(
-        "Alfa Practicas",
-        "B22222222",
-        EmpresaEstado.INACTIVA));
-
+  void legacyAdminListEndpointIsGone() throws Exception {
     mockMvc.perform(get("/api/empresas")
-            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken()))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.length()").value(3))
-        .andExpect(jsonPath("$[0].nombre").value("Alfa Practicas"))
-        .andExpect(jsonPath("$[0].identificadorFiscal").value("B22222222"))
-        .andExpect(jsonPath("$[1].nombre").value("Empresa Vinculada"))
-        .andExpect(jsonPath("$[2].nombre").value("Zeta Formacion"));
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken("empresa@example.com")))
+        .andExpect(status().is4xxClientError());
   }
 
   @Test
-  void detailReturnsCompany() throws Exception {
-    Long empresaId = empresaRepository.save(company(
-        "Tech Norte Formacion",
-        "B12345678",
-        EmpresaEstado.ACTIVA))
-        .getId();
-
-    mockMvc.perform(get("/api/empresas/{id}", empresaId)
-            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken()))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value(empresaId))
-        .andExpect(jsonPath("$.nombre").value("Tech Norte Formacion"))
-        .andExpect(jsonPath("$.estado").value("ACTIVA"));
+  void legacyAdminDetailEndpointIsGone() throws Exception {
+    mockMvc.perform(get("/api/empresas/{id}", linkedEmpresaId)
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken("empresa@example.com")))
+        .andExpect(status().is4xxClientError());
   }
 
   @Test
-  void detailReturnsNotFound() throws Exception {
-    mockMvc.perform(get("/api/empresas/{id}", 99999)
-            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken()))
-        .andExpect(status().isNotFound());
-  }
-
-  @Test
-  void createPersistsCompany() throws Exception {
+  void legacyAdminCreateEndpointIsGone() throws Exception {
     mockMvc.perform(post("/api/empresas")
-            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken())
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken("empresa@example.com"))
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(validRequest(
-                "Nueva Empresa FCT",
-                " b76543210 ",
-                EmpresaEstado.ACTIVA))))
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.nombre").value("Nueva Empresa FCT"))
-        .andExpect(jsonPath("$.identificadorFiscal").value("B76543210"))
-        .andExpect(jsonPath("$.emailContacto").value("contacto@nueva.example"))
-        .andExpect(jsonPath("$.estado").value("ACTIVA"));
+            .content("{}"))
+        .andExpect(status().is4xxClientError());
   }
 
   @Test
-  void createRejectsInvalidPayload() throws Exception {
-    mockMvc.perform(post("/api/empresas")
-            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken())
+  void legacyAdminUpdateByIdEndpointIsGone() throws Exception {
+    mockMvc.perform(put("/api/empresas/{id}", linkedEmpresaId)
+            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken("empresa@example.com"))
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(validRequest(
-                "",
-                "B76543210",
-                EmpresaEstado.ACTIVA))))
-        .andExpect(status().isBadRequest());
-  }
-
-  @Test
-  void createRejectsDuplicateFiscalId() throws Exception {
-    empresaRepository.save(company(
-        "Empresa Existente",
-        "B12345678",
-        EmpresaEstado.ACTIVA));
-
-    mockMvc.perform(post("/api/empresas")
-            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken())
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(validRequest(
-                "Empresa Duplicada",
-                "b12345678",
-                EmpresaEstado.ACTIVA))))
-        .andExpect(status().isConflict());
-  }
-
-  @Test
-  void updateChangesCompany() throws Exception {
-    Long empresaId = empresaRepository.save(company(
-        "Empresa Original",
-        "B12345678",
-        EmpresaEstado.ACTIVA))
-        .getId();
-
-    mockMvc.perform(put("/api/empresas/{id}", empresaId)
-            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken())
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(validRequest(
-                "Empresa Actualizada",
-                "B87654321",
-                EmpresaEstado.INACTIVA))))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value(empresaId))
-        .andExpect(jsonPath("$.nombre").value("Empresa Actualizada"))
-        .andExpect(jsonPath("$.identificadorFiscal").value("B87654321"))
-        .andExpect(jsonPath("$.estado").value("INACTIVA"));
-  }
-
-  @Test
-  void updateReturnsNotFound() throws Exception {
-    mockMvc.perform(put("/api/empresas/{id}", 99999)
-            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken())
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(validRequest(
-                "Empresa Inexistente",
-                "B76543210",
-                EmpresaEstado.ACTIVA))))
-        .andExpect(status().isNotFound());
-  }
-
-  @Test
-  void updateRejectsDuplicateFiscalId() throws Exception {
-    empresaRepository.save(company(
-        "Empresa Uno",
-        "B11111111",
-        EmpresaEstado.ACTIVA));
-    Long secondCompanyId = empresaRepository.save(company(
-        "Empresa Dos",
-        "B22222222",
-        EmpresaEstado.ACTIVA))
-        .getId();
-
-    mockMvc.perform(put("/api/empresas/{id}", secondCompanyId)
-            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken())
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(validRequest(
-                "Empresa Dos",
-                "b11111111",
-                EmpresaEstado.ACTIVA))))
-        .andExpect(status().isConflict());
-  }
-
-  private EmpresaRequest validRequest(
-      String nombre,
-      String identificadorFiscal,
-      EmpresaEstado estado) {
-    return new EmpresaRequest(
-        nombre,
-        IdentificadorFiscalTipo.CIF,
-        identificadorFiscal,
-        "Desarrollo de software",
-        "Empresa colaboradora para practicas FCT.",
-        "Calle Mayor 12",
-        "Valencia",
-        "Valencia",
-        "46001",
-        "CONTACTO@NUEVA.EXAMPLE",
-        "960000000",
-        "Laura Garcia",
-        estado);
+            .content("{}"))
+        .andExpect(status().is4xxClientError());
   }
 
   private EmpresaPerfilRequest validPerfilRequest(
@@ -470,10 +331,6 @@ class EmpresaControllerTest {
         "Conocimientos basicos.",
         "Tareas variadas.",
         OfertaEstado.PUBLICADA);
-  }
-
-  private String accessToken() throws Exception {
-    return accessToken("coordinador@example.com");
   }
 
   private String accessToken(String email) throws Exception {
