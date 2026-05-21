@@ -20,7 +20,7 @@ spring:
       max-request-size: 12MB
   mail:
     host: ${FCTNOW_MAIL_HOST:smtp.gmail.com}
-    port: ${FCTNOW_MAIL_PORT:587}
+    port: ${FCTNOW_MAIL_PORT:465}
     username: ${FCTNOW_MAIL_USERNAME:}
     password: ${FCTNOW_MAIL_PASSWORD:}
     properties:
@@ -30,11 +30,10 @@ spring:
           connectiontimeout: 10000
           timeout: 10000
           writetimeout: 10000
-          starttls:
+          ssl:
             enable: true
-            required: true
         transport:
-          protocol: smtp
+          protocol: smtps
 
 springdoc:
   api-docs:
