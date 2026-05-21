@@ -22,6 +22,7 @@ import {
   TutorAlumno,
   TutorAlumnoCreateRequest,
   TutorAlumnoImportResult,
+  TutorAlumnoUpdateRequest,
 } from './tutor-alumnos.models';
 import { TutorAlumnosService } from './tutor-alumnos.service';
 import { TutorCacheService } from './tutor-cache.service';
@@ -30,6 +31,8 @@ type LoadStatus = 'loading' | 'loaded' | 'error';
 type AssignStatus = 'idle' | 'assigning' | 'error' | 'success';
 type CvActionStatus = 'idle' | 'loading' | 'error';
 type CreateAlumnoStatus = 'idle' | 'saving' | 'error' | 'success';
+type EditAlumnoStatus = 'idle' | 'saving' | 'error' | 'success';
+type DeleteAlumnoStatus = 'idle' | 'deleting' | 'error' | 'success';
 type ImportStatus = 'idle' | 'uploading' | 'error' | 'success';
 type ViewMode = 'list' | 'cards';
 
@@ -562,21 +565,47 @@ type ViewMode = 'list' | 'cards';
               <p class="modal-error" role="alert">{{ msg }}</p>
             }
 
-            <div class="modal-actions">
-              <button type="button" class="secondary-button" (click)="closeAlumnoDetail()">
-                Cerrar
-              </button>
-              <button
-                type="button"
-                class="primary-button chat-action"
-                [disabled]="openingChatForAlumnoId() !== null"
-                (click)="openAlumnoChat(alumno)"
-              >
-                <svg aria-hidden="true" viewBox="0 0 24 24" class="chat-icon">
-                  <path d="M2 21l1.65-4.95A9 9 0 1 1 7 19.46L2 21Zm15-7a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm-5 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm-5 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"/>
-                </svg>
-                {{ openingChatForAlumnoId() === alumno.id ? 'Abriendo...' : 'Enviar mensaje' }}
-              </button>
+            <div class="modal-actions detail-actions">
+              <div class="detail-actions-left">
+                <button
+                  type="button"
+                  class="icon-button"
+                  title="Editar alumno"
+                  aria-label="Editar alumno"
+                  (click)="openEditAlumnoModal(alumno)"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24">
+                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25Zm17.71-10.04a1 1 0 0 0 0-1.41l-2.51-2.51a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 2-1.66Z"/>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="icon-button icon-danger"
+                  title="Eliminar alumno"
+                  aria-label="Eliminar alumno"
+                  (click)="openDeleteAlumnoConfirm(alumno)"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24">
+                    <path d="M6 7h12v13a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V7Zm3-3h6l1 2h4v2H5V6h4l1-2Zm0 6v9h2v-9H9Zm4 0v9h2v-9h-2Z"/>
+                  </svg>
+                </button>
+              </div>
+              <div class="detail-actions-right">
+                <button type="button" class="secondary-button" (click)="closeAlumnoDetail()">
+                  Cerrar
+                </button>
+                <button
+                  type="button"
+                  class="primary-button chat-action"
+                  [disabled]="openingChatForAlumnoId() !== null"
+                  (click)="openAlumnoChat(alumno)"
+                >
+                  <svg aria-hidden="true" viewBox="0 0 24 24" class="chat-icon">
+                    <path d="M2 21l1.65-4.95A9 9 0 1 1 7 19.46L2 21Zm15-7a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm-5 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm-5 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"/>
+                  </svg>
+                  {{ openingChatForAlumnoId() === alumno.id ? 'Abriendo...' : 'Enviar mensaje' }}
+                </button>
+              </div>
             </div>
           </article>
         </section>
@@ -819,6 +848,116 @@ type ViewMode = 'list' | 'cards';
                 }
               </div>
             </form>
+          </article>
+        </section>
+      }
+
+      @if (editAlumnoTarget(); as alumno) {
+        <section class="modal-backdrop" role="presentation" (click)="closeEditAlumnoModal()">
+          <article
+            class="confirm-modal create-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-alumno-title"
+            (click)="$event.stopPropagation()"
+          >
+            <form [formGroup]="editAlumnoForm" (ngSubmit)="submitEditAlumno()">
+              <p class="eyebrow">Editar alumno</p>
+              <h2 id="edit-alumno-title">Editar {{ alumno.displayName }}</h2>
+              <div class="create-form-grid">
+                <label class="filter-control create-field">
+                  <span>Nombre completo</span>
+                  <input type="text" formControlName="displayName" autocomplete="name" />
+                  <small
+                    class="field-hint"
+                    [class.is-empty]="!(editAlumnoForm.controls.displayName.touched && editAlumnoForm.controls.displayName.invalid)"
+                  >El nombre es obligatorio.</small>
+                </label>
+                <label class="filter-control create-field">
+                  <span>Username</span>
+                  <div class="username-field">
+                    <input
+                      type="text"
+                      formControlName="username"
+                      placeholder="nombre.apellido"
+                      autocomplete="username"
+                    />
+                    <span>@fctnow.com</span>
+                  </div>
+                  <small
+                    class="field-hint"
+                    [class.is-empty]="!(editAlumnoForm.controls.username.touched && editAlumnoForm.controls.username.invalid)"
+                  >Usa solo letras, numeros, punto, guion o guion bajo.</small>
+                </label>
+              </div>
+              @if (editAlumnoStatus() === 'error') {
+                <p class="modal-error" role="alert">{{ editAlumnoError() }}</p>
+              }
+              @if (editAlumnoStatus() === 'success') {
+                <p class="modal-success" role="status">Cambios guardados correctamente.</p>
+              }
+              <div class="modal-actions">
+                <button
+                  type="button"
+                  class="secondary-button"
+                  [disabled]="editAlumnoStatus() === 'saving'"
+                  (click)="closeEditAlumnoModal()"
+                >
+                  {{ editAlumnoStatus() === 'success' ? 'Cerrar' : 'Cancelar' }}
+                </button>
+                @if (editAlumnoStatus() !== 'success') {
+                  <button
+                    type="submit"
+                    class="primary-button"
+                    [disabled]="editAlumnoStatus() === 'saving'"
+                  >
+                    {{ editAlumnoStatus() === 'saving' ? 'Guardando...' : 'Guardar cambios' }}
+                  </button>
+                }
+              </div>
+            </form>
+          </article>
+        </section>
+      }
+
+      @if (deleteAlumnoTarget(); as alumno) {
+        <section class="modal-backdrop" role="presentation" (click)="closeDeleteAlumnoConfirm()">
+          <article
+            class="confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-alumno-title"
+            style="max-width:480px"
+            (click)="$event.stopPropagation()"
+          >
+            <p class="eyebrow">Confirmar eliminación</p>
+            <h2 id="delete-alumno-title">Eliminar a {{ alumno.displayName }}</h2>
+            <p class="modal-note" style="color:#8a3a26">
+              Esta acción eliminará al alumno y <strong>todos sus datos relacionados</strong>:
+              solicitudes, asignaciones, CV, preferencias y mensajes. No se puede deshacer.
+            </p>
+            @if (deleteAlumnoStatus() === 'error') {
+              <p class="modal-error" role="alert">{{ deleteAlumnoError() }}</p>
+            }
+            <div class="modal-actions">
+              <button
+                type="button"
+                class="secondary-button"
+                [disabled]="deleteAlumnoStatus() === 'deleting'"
+                (click)="closeDeleteAlumnoConfirm()"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                class="primary-button"
+                style="background:#b3261e;border-color:#b3261e"
+                [disabled]="deleteAlumnoStatus() === 'deleting'"
+                (click)="confirmDeleteAlumno()"
+              >
+                {{ deleteAlumnoStatus() === 'deleting' ? 'Eliminando...' : 'Eliminar definitivamente' }}
+              </button>
+            </div>
           </article>
         </section>
       }
@@ -1636,6 +1775,39 @@ type ViewMode = 'list' | 'cards';
         line-height: 1.35;
       }
 
+      .detail-actions {
+        justify-content: space-between !important;
+      }
+      .detail-actions-left,
+      .detail-actions-right {
+        display: flex;
+        gap: 0.5rem;
+      }
+      .icon-button {
+        background: transparent;
+        border: 1px solid rgba(0, 0, 0, 0.12);
+        border-radius: 8px;
+        width: 38px;
+        height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #5b6470;
+      }
+      .icon-button:hover:not(:disabled) {
+        background: rgba(0, 0, 0, 0.04);
+      }
+      .icon-button.icon-danger:hover:not(:disabled) {
+        background: rgba(179, 38, 30, 0.1);
+        color: #8a3a26;
+      }
+      .icon-button svg {
+        width: 18px;
+        height: 18px;
+        fill: currentColor;
+      }
+
       .modal-actions {
         display: flex;
         justify-content: flex-end;
@@ -1750,6 +1922,12 @@ export class TutorPage implements OnInit {
   protected readonly isCreateAlumnoModalOpen = signal(false);
   protected readonly createAlumnoStatus = signal<CreateAlumnoStatus>('idle');
   protected readonly createAlumnoError = signal<string>('');
+  protected readonly editAlumnoTarget = signal<TutorAlumno | null>(null);
+  protected readonly editAlumnoStatus = signal<EditAlumnoStatus>('idle');
+  protected readonly editAlumnoError = signal<string>('');
+  protected readonly deleteAlumnoTarget = signal<TutorAlumno | null>(null);
+  protected readonly deleteAlumnoStatus = signal<DeleteAlumnoStatus>('idle');
+  protected readonly deleteAlumnoError = signal<string>('');
   protected readonly importStatus = signal<ImportStatus>('idle');
   protected readonly importError = signal<string>('');
   protected readonly importResult = signal<TutorAlumnoImportResult | null>(null);
@@ -1814,6 +1992,22 @@ export class TutorPage implements OnInit {
       ],
     }),
   });
+
+  protected readonly editAlumnoForm = new FormGroup({
+    displayName: new FormControl<string>('', {
+      nonNullable: true,
+      validators: [Validators.required, Validators.maxLength(150)],
+    }),
+    username: new FormControl<string>('', {
+      nonNullable: true,
+      validators: [
+        Validators.required,
+        Validators.maxLength(180),
+        Validators.pattern(/^[a-zA-Z0-9._-]+$/),
+      ],
+    }),
+  });
+
   private readonly searchValue = signal<string>('');
   private readonly estadoValue = signal<
     'TODOS' | 'ASIGNADO' | 'SIN_ASIGNAR' | 'LISTO_PARA_ASIGNAR'
@@ -2083,6 +2277,135 @@ export class TutorPage implements OnInit {
           this.createAlumnoError.set(this.describeCreateAlumnoError(err));
         },
       });
+  }
+
+  protected openEditAlumnoModal(alumno: TutorAlumno): void {
+    const localPart = alumno.email.endsWith('@fctnow.com')
+      ? alumno.email.slice(0, -'@fctnow.com'.length)
+      : alumno.email;
+    this.editAlumnoForm.reset({
+      displayName: alumno.displayName,
+      username: localPart,
+    });
+    this.editAlumnoTarget.set(alumno);
+    this.editAlumnoStatus.set('idle');
+    this.editAlumnoError.set('');
+  }
+
+  protected closeEditAlumnoModal(): void {
+    if (this.editAlumnoStatus() === 'saving') return;
+    this.editAlumnoTarget.set(null);
+    this.editAlumnoStatus.set('idle');
+    this.editAlumnoError.set('');
+  }
+
+  protected submitEditAlumno(): void {
+    if (this.editAlumnoStatus() === 'saving') return;
+    const target = this.editAlumnoTarget();
+    if (!target) return;
+    if (this.editAlumnoForm.invalid) {
+      this.editAlumnoForm.markAllAsTouched();
+      return;
+    }
+
+    const raw = this.editAlumnoForm.getRawValue();
+    const request: TutorAlumnoUpdateRequest = {
+      displayName: raw.displayName.trim(),
+      username: raw.username.trim(),
+    };
+
+    this.editAlumnoStatus.set('saving');
+    this.editAlumnoError.set('');
+    this.tutorService
+      .updateAlumno(target.id, request)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (updated) => {
+          this.alumnos.update((current) =>
+            current.map((a) => (a.id === updated.id ? updated : a)),
+          );
+          if (this.selectedDetailAlumno()?.id === updated.id) {
+            this.selectedDetailAlumno.set(updated);
+          }
+          this.editAlumnoStatus.set('success');
+          this.cache.invalidate();
+          this.load(true);
+          setTimeout(() => {
+            if (this.editAlumnoStatus() === 'success') {
+              this.editAlumnoTarget.set(null);
+              this.editAlumnoStatus.set('idle');
+            }
+          }, 1800);
+        },
+        error: (err: unknown) => {
+          this.editAlumnoStatus.set('error');
+          this.editAlumnoError.set(this.describeUpdateAlumnoError(err));
+        },
+      });
+  }
+
+  protected openDeleteAlumnoConfirm(alumno: TutorAlumno): void {
+    this.deleteAlumnoTarget.set(alumno);
+    this.deleteAlumnoStatus.set('idle');
+    this.deleteAlumnoError.set('');
+  }
+
+  protected closeDeleteAlumnoConfirm(): void {
+    if (this.deleteAlumnoStatus() === 'deleting') return;
+    this.deleteAlumnoTarget.set(null);
+    this.deleteAlumnoStatus.set('idle');
+    this.deleteAlumnoError.set('');
+  }
+
+  protected confirmDeleteAlumno(): void {
+    if (this.deleteAlumnoStatus() === 'deleting') return;
+    const target = this.deleteAlumnoTarget();
+    if (!target) return;
+
+    this.deleteAlumnoStatus.set('deleting');
+    this.deleteAlumnoError.set('');
+    this.tutorService
+      .deleteAlumno(target.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.alumnos.update((current) => current.filter((a) => a.id !== target.id));
+          if (this.selectedDetailAlumno()?.id === target.id) {
+            this.selectedDetailAlumno.set(null);
+          }
+          this.deleteAlumnoTarget.set(null);
+          this.deleteAlumnoStatus.set('idle');
+          this.cache.invalidate();
+          this.load(true);
+        },
+        error: (err: unknown) => {
+          this.deleteAlumnoStatus.set('error');
+          this.deleteAlumnoError.set(this.describeDeleteAlumnoError(err));
+        },
+      });
+  }
+
+  private describeUpdateAlumnoError(err: unknown): string {
+    if (err instanceof HttpErrorResponse) {
+      if (err.status === 409) return 'Ya existe una cuenta con ese username.';
+      if (err.status === 404) return 'El alumno ya no existe.';
+      if (err.status === 400) {
+        const msg = typeof err.error === 'object' && err.error && 'message' in err.error
+          ? String((err.error as { message?: string }).message ?? '')
+          : '';
+        return msg || 'Datos no válidos. Revisa el formulario.';
+      }
+      if (err.status === 0) return 'No se pudo contactar con el servidor.';
+    }
+    return 'No se pudieron guardar los cambios. Inténtalo de nuevo.';
+  }
+
+  private describeDeleteAlumnoError(err: unknown): string {
+    if (err instanceof HttpErrorResponse) {
+      if (err.status === 404) return 'El alumno ya no existe.';
+      if (err.status === 0) return 'No se pudo contactar con el servidor.';
+    }
+    return 'No se pudo eliminar el alumno. Inténtalo de nuevo.';
   }
 
   protected downloadImportTemplate(): void {

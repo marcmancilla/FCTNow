@@ -7,6 +7,7 @@ import {
   TutorAlumno,
   TutorAlumnoCreateRequest,
   TutorAlumnoImportResult,
+  TutorAlumnoUpdateRequest,
 } from './tutor-alumnos.models';
 
 @Injectable({ providedIn: 'root' })
@@ -33,6 +34,25 @@ export class TutorAlumnosService {
   createAlumno(request: TutorAlumnoCreateRequest): Observable<TutorAlumno> {
     return this.withAuth((headers) =>
       this.http.post<TutorAlumno>(`${this.apiBaseUrl}/tutor/alumnos`, request, { headers }),
+    );
+  }
+
+  updateAlumno(
+    alumnoId: number,
+    request: TutorAlumnoUpdateRequest,
+  ): Observable<TutorAlumno> {
+    return this.withAuth((headers) =>
+      this.http.put<TutorAlumno>(
+        `${this.apiBaseUrl}/tutor/alumnos/${alumnoId}`,
+        request,
+        { headers },
+      ),
+    );
+  }
+
+  deleteAlumno(alumnoId: number): Observable<void> {
+    return this.withAuth((headers) =>
+      this.http.delete<void>(`${this.apiBaseUrl}/tutor/alumnos/${alumnoId}`, { headers }),
     );
   }
 

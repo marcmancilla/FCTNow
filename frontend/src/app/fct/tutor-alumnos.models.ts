@@ -67,6 +67,11 @@ export type TutorAlumnoCreateRequest = {
   centroEmail: string;
 };
 
+export type TutorAlumnoUpdateRequest = {
+  displayName: string;
+  username: string;
+};
+
 export type TutorAlumnoImportRow = {
   fila: number;
   email: string | null;

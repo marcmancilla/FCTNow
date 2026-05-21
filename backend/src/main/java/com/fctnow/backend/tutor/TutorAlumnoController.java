@@ -12,9 +12,11 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -49,6 +51,26 @@ public class TutorAlumnoController {
 
     return ResponseEntity.created(URI.create("/api/tutor/alumnos/" + alumno.id()))
         .body(alumno);
+  }
+
+  @PutMapping("/alumnos/{alumnoId}")
+  @Operation(summary = "Update basic profile fields of a student account")
+  @SecurityRequirement(name = "bearerAuth")
+  public TutorAlumnoResponse updateAlumno(
+      @PathVariable Long alumnoId,
+      @Valid @RequestBody TutorAlumnoUpdateRequest request,
+      JwtAuthenticationToken authentication) {
+    return tutorAlumnoService.updateAlumno(alumnoId, request, authentication);
+  }
+
+  @DeleteMapping("/alumnos/{alumnoId}")
+  @Operation(summary = "Delete a student account and all their related data")
+  @SecurityRequirement(name = "bearerAuth")
+  public ResponseEntity<Void> deleteAlumno(
+      @PathVariable Long alumnoId,
+      JwtAuthenticationToken authentication) {
+    tutorAlumnoService.deleteAlumno(alumnoId, authentication);
+    return ResponseEntity.noContent().build();
   }
 
   @GetMapping("/alumnos/import-template")

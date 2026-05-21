@@ -190,6 +190,63 @@ public class TutorAlumnoService {
     return buildResponse(alumno, null, List.of(), List.of(), null, null, null, null);
   }
 
+  @Transactional
+  public TutorAlumnoResponse updateAlumno(
+      Long alumnoId,
+      TutorAlumnoUpdateRequest request,
+      JwtAuthenticationToken authentication) {
+    requireCentroRole(authentication);
+
+    UserAccount alumno = userAccountRepository.findById(alumnoId)
+        .filter(u -> u.getRoles().contains(UserRole.ALUMNO))
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alumno no encontrado"));
+
+    String newDisplayName = trimToNull(request.displayName());
+    String newEmail = normalizeFctNowEmail(request.username());
+    if (newDisplayName == null || newEmail == null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nombre y username son obligatorios");
+    }
+
+    if (!newEmail.equalsIgnoreCase(alumno.getEmail())) {
+      userAccountRepository.findByEmailIgnoreCase(newEmail).ifPresent(other -> {
+        if (!other.getId().equals(alumno.getId())) {
+          throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe una cuenta con ese username");
+        }
+      });
+    }
+
+    alumno.updateProfile(newDisplayName, newEmail);
+    UserAccount saved = userAccountRepository.save(alumno);
+
+    AlumnoPreferencias preferencias = preferenciasRepository.findByAlumnoId(saved.getId()).orElse(null);
+    List<SolicitudFct> solicitudes = solicitudFctRepository.findByAlumnoIdIn(List.of(saved.getId()));
+    List<SolicitudExterna> solicitudesExt = solicitudExternaRepository.findByAlumnoIdIn(List.of(saved.getId()));
+    AsignacionFct asignacion = asignacionFctRepository.findByAlumnoIdInWithDetails(List.of(saved.getId()))
+        .stream()
+        .max(Comparator.comparing(AsignacionFct::getFechaAsignacion))
+        .orElse(null);
+    AsignacionFctExterna asignacionExt = asignacionFctExternaRepository
+        .findByAlumnoIdInWithDetails(List.of(saved.getId()))
+        .stream()
+        .max(Comparator.comparing(AsignacionFctExterna::getFechaAsignacion))
+        .orElse(null);
+
+    return buildResponse(saved, preferencias, solicitudes, solicitudesExt, asignacion, asignacionExt, null, null);
+  }
+
+  @Transactional
+  public void deleteAlumno(Long alumnoId, JwtAuthenticationToken authentication) {
+    requireCentroRole(authentication);
+
+    UserAccount alumno = userAccountRepository.findById(alumnoId)
+        .filter(u -> u.getRoles().contains(UserRole.ALUMNO))
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Alumno no encontrado"));
+
+    asignacionFctExternaRepository.deleteByAlumnoId(alumno.getId());
+    asignacionFctRepository.deleteByAlumnoId(alumno.getId());
+    userAccountRepository.delete(alumno);
+  }
+
   @Transactional(readOnly = true)
   public byte[] createImportTemplate(JwtAuthenticationToken authentication) {
     requireCentroRole(authentication);

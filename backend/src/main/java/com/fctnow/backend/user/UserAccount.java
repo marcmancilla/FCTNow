@@ -109,6 +109,15 @@ public class UserAccount {
     this.centroEmail = centroEmail;
   }
 
+  public void updateProfile(String displayName, String email) {
+    if (displayName != null) {
+      this.displayName = displayName;
+    }
+    if (email != null) {
+      this.email = email;
+    }
+  }
+
   public void updateFoto(String fileName, String contentType, byte[] content) {
     this.fotoFileName = fileName;
     this.fotoContentType = contentType;

@@ -4,14 +4,21 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface AsignacionFctRepository extends JpaRepository<AsignacionFct, Long> {
 
   boolean existsBySolicitudId(Long solicitudId);
 
   boolean existsByAlumnoIdAndEstado(Long alumnoId, AsignacionEstado estado);
+
+  @Modifying
+  @Transactional
+  @Query("delete from AsignacionFct a where a.alumno.id = :alumnoId")
+  int deleteByAlumnoId(@Param("alumnoId") Long alumnoId);
 
   @Query("""
       select a
