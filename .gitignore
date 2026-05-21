@@ -58,3 +58,7 @@ backend/src/main/resources/application-secrets-*.yml
 # System files
 .DS_Store
 Thumbs.db
+
+# Local-only project files (memoria y entregables ofimaticos)
+/AnonTalk.pptx
+/MEMORIA.md
