@@ -57,6 +57,18 @@ export class AuthService {
     this.sessionState.set(null);
   }
 
+  changePassword(currentPassword: string, newPassword: string): Observable<void> {
+    const token = this.accessToken();
+    if (!token) {
+      return throwError(() => new Error('No hay una sesión activa.'));
+    }
+    return this.http.post<void>(
+      this.authUrl('change-password'),
+      { currentPassword, newPassword },
+      { headers: new HttpHeaders({ Authorization: `Bearer ${token}` }) },
+    );
+  }
+
   accessToken(): string | null {
     return this.sessionState()?.accessToken ?? null;
   }
@@ -66,7 +78,7 @@ export class AuthService {
     this.sessionState.set(session);
   }
 
-  private authUrl(resource: 'login' | 'me'): string {
+  private authUrl(resource: 'login' | 'me' | 'change-password'): string {
     return `${this.apiBaseUrl}/auth/${resource}`;
   }
 }

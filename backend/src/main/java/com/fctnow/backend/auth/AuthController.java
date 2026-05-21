@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,5 +34,15 @@ public class AuthController {
   @SecurityRequirement(name = "bearerAuth")
   public AuthenticatedUserResponse me(JwtAuthenticationToken authentication) {
     return AuthenticatedUserResponse.from(authentication.getToken());
+  }
+
+  @PostMapping("/change-password")
+  @Operation(summary = "Change the authenticated user's password")
+  @SecurityRequirement(name = "bearerAuth")
+  public ResponseEntity<Void> changePassword(
+      @Valid @RequestBody ChangePasswordRequest request,
+      JwtAuthenticationToken authentication) {
+    authService.changePassword(authentication, request);
+    return ResponseEntity.noContent().build();
   }
 }

@@ -118,6 +118,10 @@ public class UserAccount {
     }
   }
 
+  public void updatePasswordHash(String passwordHash) {
+    this.passwordHash = passwordHash;
+  }
+
   public void updateFoto(String fileName, String contentType, byte[] content) {
     this.fotoFileName = fileName;
     this.fotoContentType = contentType;

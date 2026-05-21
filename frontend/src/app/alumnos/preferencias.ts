@@ -30,6 +30,7 @@ import { AlumnoPreferenciasService } from './preferencias.service';
 type PageStatus = 'loading' | 'loaded' | 'error' | 'not-authenticated';
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 type UploadStatus = 'idle' | 'uploading' | 'saved' | 'error';
+type PasswordStatus = 'idle' | 'saving' | 'success' | 'error';
 
 @Component({
   selector: 'app-preferencias-alumno-page',
@@ -311,9 +312,14 @@ type UploadStatus = 'idle' | 'uploading' | 'saved' | 'error';
               <p class="form-message success" aria-live="polite">Preferencias guardadas.</p>
             }
 
-            <button class="primary-action" type="button" (click)="enterEdit()">
-              Editar preferencias
-            </button>
+            <div class="profile-actions">
+              <button class="primary-action" type="button" (click)="enterEdit()">
+                Editar preferencias
+              </button>
+              <button class="secondary-action" type="button" (click)="openPasswordModal()">
+                Restablecer contraseña
+              </button>
+            </div>
           </article>
 
           @if (showPhoto) {
@@ -349,6 +355,64 @@ type UploadStatus = 'idle' | 'uploading' | 'saved' | 'error';
               }
             </aside>
           }
+        </section>
+      }
+
+      @if (isPasswordModalOpen()) {
+        <section class="modal-backdrop" role="presentation" (click)="closePasswordModal()">
+          <article
+            class="confirm-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="password-modal-title"
+            style="max-width:460px"
+            (click)="$event.stopPropagation()"
+          >
+            <form [formGroup]="passwordForm" (ngSubmit)="submitPasswordChange()">
+              <p class="eyebrow">Seguridad</p>
+              <h2 id="password-modal-title">Restablecer contraseña</h2>
+              <div class="password-form-grid">
+                <label class="password-field">
+                  <span>Contraseña actual</span>
+                  <input type="password" formControlName="currentPassword" autocomplete="current-password" />
+                </label>
+                <label class="password-field">
+                  <span>Nueva contraseña</span>
+                  <input type="password" formControlName="newPassword" autocomplete="new-password" />
+                  <small class="muted">Mínimo 8 caracteres.</small>
+                </label>
+                <label class="password-field">
+                  <span>Repetir nueva contraseña</span>
+                  <input type="password" formControlName="confirmPassword" autocomplete="new-password" />
+                </label>
+              </div>
+              @if (passwordStatus() === 'error') {
+                <p class="form-message error" role="alert">{{ passwordError() }}</p>
+              }
+              @if (passwordStatus() === 'success') {
+                <p class="form-message success" role="status">Contraseña actualizada correctamente.</p>
+              }
+              <div class="modal-actions">
+                <button
+                  type="button"
+                  class="secondary-action"
+                  [disabled]="passwordStatus() === 'saving'"
+                  (click)="closePasswordModal()"
+                >
+                  {{ passwordStatus() === 'success' ? 'Cerrar' : 'Cancelar' }}
+                </button>
+                @if (passwordStatus() !== 'success') {
+                  <button
+                    type="submit"
+                    class="primary-action"
+                    [disabled]="passwordStatus() === 'saving'"
+                  >
+                    {{ passwordStatus() === 'saving' ? 'Guardando...' : 'Guardar contraseña' }}
+                  </button>
+                }
+              </div>
+            </form>
+          </article>
         </section>
       }
     </ng-template>
@@ -646,6 +710,62 @@ type UploadStatus = 'idle' | 'uploading' | 'saved' | 'error';
         border-color: var(--ink-soft);
       }
 
+      .profile-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.6rem;
+      }
+
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        z-index: 1000;
+      }
+
+      .confirm-modal {
+        background: var(--surface);
+        border-radius: var(--radius-lg, 16px);
+        padding: 1.4rem 1.5rem;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+        max-width: 460px;
+        width: 100%;
+      }
+
+      .confirm-modal h2 {
+        margin: 0.25rem 0 1rem;
+      }
+
+      .password-form-grid {
+        display: grid;
+        gap: 0.85rem;
+        margin-bottom: 1rem;
+      }
+
+      .password-field {
+        display: grid;
+        gap: 0.3rem;
+      }
+
+      .password-field input {
+        padding: 0.55rem 0.7rem;
+        border: 1px solid var(--line-strong);
+        border-radius: var(--radius-md);
+        background: var(--surface);
+        font: inherit;
+      }
+
+      .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.6rem;
+        margin-top: 0.6rem;
+      }
+
       button:disabled {
         cursor: not-allowed;
         opacity: 0.58;
@@ -721,6 +841,15 @@ export class PreferenciasAlumnoPage implements OnInit {
     modalidadPreferida: [''],
     fechaDisponibilidad: [''],
     observaciones: ['', [Validators.maxLength(1000)]],
+  });
+
+  protected readonly isPasswordModalOpen = signal(false);
+  protected readonly passwordStatus = signal<PasswordStatus>('idle');
+  protected readonly passwordError = signal<string>('');
+  protected readonly passwordForm = this.fb.nonNullable.group({
+    currentPassword: ['', [Validators.required]],
+    newPassword: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(100)]],
+    confirmPassword: ['', [Validators.required]],
   });
 
   protected readonly familiaOptions = FAMILIAS_PROFESIONALES;
@@ -868,6 +997,79 @@ export class PreferenciasAlumnoPage implements OnInit {
     this.photoUploadError.set(null);
     this.editing.set(true);
     this.editingChange.emit(true);
+  }
+
+  protected openPasswordModal(): void {
+    this.passwordForm.reset({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    });
+    this.passwordStatus.set('idle');
+    this.passwordError.set('');
+    this.isPasswordModalOpen.set(true);
+  }
+
+  protected closePasswordModal(): void {
+    if (this.passwordStatus() === 'saving') return;
+    this.isPasswordModalOpen.set(false);
+    this.passwordStatus.set('idle');
+    this.passwordError.set('');
+  }
+
+  protected submitPasswordChange(): void {
+    if (this.passwordStatus() === 'saving') return;
+    if (this.passwordForm.invalid) {
+      this.passwordForm.markAllAsTouched();
+      return;
+    }
+
+    const raw = this.passwordForm.getRawValue();
+    if (raw.newPassword !== raw.confirmPassword) {
+      this.passwordStatus.set('error');
+      this.passwordError.set('La nueva contraseña y la confirmación no coinciden.');
+      return;
+    }
+    if (raw.newPassword === raw.currentPassword) {
+      this.passwordStatus.set('error');
+      this.passwordError.set('La nueva contraseña debe ser distinta de la actual.');
+      return;
+    }
+
+    this.passwordStatus.set('saving');
+    this.passwordError.set('');
+    this.authService
+      .changePassword(raw.currentPassword, raw.newPassword)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.passwordStatus.set('success');
+          setTimeout(() => {
+            if (this.passwordStatus() === 'success') {
+              this.isPasswordModalOpen.set(false);
+              this.passwordStatus.set('idle');
+            }
+          }, 1800);
+        },
+        error: (err: unknown) => {
+          this.passwordStatus.set('error');
+          this.passwordError.set(this.describePasswordError(err));
+        },
+      });
+  }
+
+  private describePasswordError(err: unknown): string {
+    if (err instanceof HttpErrorResponse) {
+      if (err.status === 401) return 'La contraseña actual no es correcta.';
+      if (err.status === 400) {
+        const msg = typeof err.error === 'object' && err.error && 'message' in err.error
+          ? String((err.error as { message?: string }).message ?? '')
+          : '';
+        return msg || 'Datos no válidos. Revisa el formulario.';
+      }
+      if (err.status === 0) return 'No se pudo contactar con el servidor.';
+    }
+    return 'No se pudo actualizar la contraseña. Inténtalo de nuevo.';
   }
 
   protected cancelEdit(): void {
