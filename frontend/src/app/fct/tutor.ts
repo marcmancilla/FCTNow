@@ -794,6 +794,11 @@ type ViewMode = 'list' | 'cards';
               @if (createAlumnoStatus() === 'error') {
                 <p class="modal-error" role="alert">{{ createAlumnoError() }}</p>
               }
+              @if (createAlumnoStatus() === 'success') {
+                <p class="modal-success" role="status">
+                  Alumno creado correctamente. Se ha enviado un correo con las credenciales al email del centro indicado.
+                </p>
+              }
               <div class="modal-actions">
                 <button
                   type="button"
@@ -801,15 +806,17 @@ type ViewMode = 'list' | 'cards';
                   [disabled]="createAlumnoStatus() === 'saving'"
                   (click)="closeCreateAlumnoModal()"
                 >
-                  Cancelar
+                  {{ createAlumnoStatus() === 'success' ? 'Cerrar' : 'Cancelar' }}
                 </button>
-                <button
-                  type="submit"
-                  class="primary-button"
-                  [disabled]="createAlumnoStatus() === 'saving'"
-                >
-                  {{ createAlumnoStatus() === 'saving' ? 'Creando...' : 'Crear alumno' }}
-                </button>
+                @if (createAlumnoStatus() !== 'success') {
+                  <button
+                    type="submit"
+                    class="primary-button"
+                    [disabled]="createAlumnoStatus() === 'saving'"
+                  >
+                    {{ createAlumnoStatus() === 'saving' ? 'Creando...' : 'Crear alumno' }}
+                  </button>
+                }
               </div>
             </form>
           </article>
@@ -1618,6 +1625,17 @@ type ViewMode = 'list' | 'cards';
         font-weight: 700;
       }
 
+      .modal-success {
+        margin: 0;
+        padding: 0.75rem 0.9rem;
+        border-radius: var(--radius-md);
+        background: rgba(34, 139, 90, 0.12);
+        color: #1e6b43;
+        font-weight: 600;
+        font-size: 0.92rem;
+        line-height: 1.35;
+      }
+
       .modal-actions {
         display: flex;
         justify-content: flex-end;
@@ -2051,9 +2069,14 @@ export class TutorPage implements OnInit {
         next: (alumno) => {
           this.alumnos.update((current) => [...current, alumno]);
           this.createAlumnoStatus.set('success');
-          this.isCreateAlumnoModalOpen.set(false);
           this.cache.invalidate();
           this.load(true);
+          setTimeout(() => {
+            if (this.createAlumnoStatus() === 'success') {
+              this.isCreateAlumnoModalOpen.set(false);
+              this.createAlumnoStatus.set('idle');
+            }
+          }, 2500);
         },
         error: (err: unknown) => {
           this.createAlumnoStatus.set('error');
